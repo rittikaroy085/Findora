@@ -7,7 +7,12 @@ from pathlib import Path
 import streamlit as st
 from PIL import Image, ImageOps
 
-from findora_engine import Findora, build_index, load_index
+from findora_engine import (
+    Findora,
+    build_index,
+    build_index_from_uploads,
+    load_index,
+)
 
 # -----------------------------
 # PAGE CONFIGURATION
@@ -39,6 +44,13 @@ PAGES = [
 ]
 GRID_COLUMNS = 4
 PAGE_SIZE = 12
+MAX_UPLOADS = 100
+SAMPLE_DIR = Path("sample_photos")
+IMAGE_TYPES = ["jpg", "jpeg", "png", "webp", "bmp"]
+
+# On a public host (Streamlit Community Cloud / Hugging Face Spaces) visitors must
+# upload photos: the server cannot see their disk, and a folder box would expose the server.
+HOSTED = bool(os.environ.get("SPACE_ID")) or Path("/mount/src").exists()
 SUGGESTIONS = [
     "Handwritten notes",
     "Beach sunset",
@@ -49,9 +61,15 @@ SUGGESTIONS = [
 ]
 
 
-@st.cache_resource(show_spinner="Loading AI models (first time only)...")
+@st.cache_resource(show_spinner="Loading AI models (the first start downloads them, about 1 to 2 minutes)...")
 def get_engine():
     return Findora()
+
+
+def sample_available() -> bool:
+    return SAMPLE_DIR.is_dir() and any(
+        p.suffix.lower().lstrip(".") in IMAGE_TYPES for p in SAMPLE_DIR.iterdir()
+    )
 
 
 @st.cache_data(show_spinner=False)
@@ -72,17 +90,21 @@ def load_thumbnail(path: str, mtime: float, size: int = 480):
 
 
 @st.cache_data(show_spinner=False)
-def masonry_html(paths: tuple) -> str:
+def masonry_html(sources: tuple) -> str:
     """Fading masonry preview built from small inline thumbnails."""
     tiles = []
-    for p in paths:
+    for s in sources:
         try:
-            with Image.open(p) as img:
-                im = ImageOps.exif_transpose(img).convert("RGB")
-            im.thumbnail((360, 360))
-            buf = io.BytesIO()
-            im.save(buf, "JPEG", quality=72)
-            b64 = base64.b64encode(buf.getvalue()).decode()
+            if isinstance(s, (bytes, bytearray)):
+                data = bytes(s)
+            else:
+                with Image.open(s) as img:
+                    im = ImageOps.exif_transpose(img).convert("RGB")
+                im.thumbnail((360, 360))
+                buf = io.BytesIO()
+                im.save(buf, "JPEG", quality=72)
+                data = buf.getvalue()
+            b64 = base64.b64encode(data).decode()
             tiles.append(f'<img src="data:image/jpeg;base64,{b64}" alt="">')
         except Exception:
             continue
@@ -106,9 +128,12 @@ def render_grid(items):
         for col, (path, caption) in zip(cols, items[start:start + GRID_COLUMNS]):
             with col:
                 try:
-                    thumb = load_thumbnail(path, os.path.getmtime(path))
+                    if isinstance(path, (bytes, bytearray)):
+                        thumb = Image.open(io.BytesIO(path)).convert("RGB")
+                    else:
+                        thumb = load_thumbnail(path, os.path.getmtime(path))
                 except Exception:
-                    st.caption(f"Can't open {Path(path).name}")
+                    st.caption("Can't open this image")
                     continue
                 show_image(thumb, caption)
 
@@ -130,6 +155,11 @@ def show_more():
         st.session_state.run_search = True
 
 
+def use_sample():
+    st.session_state.run_sample = True
+    st.session_state.page = PAGES[1]
+
+
 def clear_results():
     st.session_state.results = None
 
@@ -141,11 +171,11 @@ def do_search(query: str):
         st.warning("Describe what you remember first, for example: a magenta flower.")
         return
     if library is None:
-        st.info("Build your searchable library first by choosing a gallery folder.")
+        st.info("Add your photos first, then search them.")
         st.button(
-            "Choose folder",
+            "Add photos",
             key="search_needs_index",
-            icon=":material/folder_open:",
+            icon=":material/add_photo_alternate:",
             on_click=go_to,
             args=(PAGES[1],),
         )
@@ -157,7 +187,7 @@ def do_search(query: str):
     hits = engine.search(query, library.vectors, st.session_state.top_k)
     st.session_state.results = {
         "query": query,
-        "hits": [(library.paths[i], score) for i, score in hits],
+        "hits": hits,
     }
 
 
@@ -166,7 +196,8 @@ def do_search(query: str):
 # -----------------------------
 
 if "library" not in st.session_state:
-    st.session_state.library = load_index()  # reuse a saved index if present
+    # reuse a saved index on your own PC; never on a shared public host
+    st.session_state.library = None if HOSTED else load_index()
 st.session_state.setdefault("results", None)
 st.session_state.setdefault("page", PAGES[0])
 st.session_state.setdefault("top_k", PAGE_SIZE)
@@ -206,7 +237,9 @@ with st.sidebar:
             f'<div class="pill"><span class="dot"></span>{len(library)} images indexed</div>',
             unsafe_allow_html=True,
         )
-        st.caption(Path(library.folder).name)
+        st.caption(
+            library.folder if library.thumbs is not None else Path(library.folder).name
+        )
 
     st.caption("Findora • Version 1.0")
 
@@ -271,8 +304,8 @@ if page == PAGES[0]:
                 on_click=clear_results,
             )
         render_grid([
-            (path, f"{rank} · {score:.3f} · {Path(path).name}")
-            for rank, (path, score) in enumerate(results["hits"], 1)
+            (library.source(i), f"{rank} · {score:.3f} · {library.name(i)}")
+            for rank, (i, score) in enumerate(results["hits"], 1)
         ])
         if st.session_state.top_k < len(library):
             st.button(
@@ -284,8 +317,8 @@ if page == PAGES[0]:
     else:
         html = ""
         if library is not None:
-            sample = random.Random(7).sample(library.paths, min(16, len(library)))
-            html = masonry_html(tuple(sample))
+            picks = random.Random(7).sample(range(len(library)), min(16, len(library)))
+            html = masonry_html(tuple(library.source(i) for i in picks))
 
         if html:
             st.markdown(html, unsafe_allow_html=True)
@@ -293,16 +326,26 @@ if page == PAGES[0]:
             with st.container(border=True):
                 st.markdown("### :material/add_photo_alternate: Bring your photos in")
                 st.write(
-                    "Choose a folder and Findora indexes it on your device. "
+                    "Add some photos and Findora indexes them. "
                     "Then search by describing what you remember."
                 )
-                st.button(
-                    "Choose folder",
-                    key="choose_folder",
-                    icon=":material/folder_open:",
-                    on_click=go_to,
-                    args=(PAGES[1],),
-                )
+                left, right = st.columns([1, 1])
+                with left:
+                    st.button(
+                        "Add photos",
+                        key="choose_folder",
+                        icon=":material/add_photo_alternate:",
+                        on_click=go_to,
+                        args=(PAGES[1],),
+                    )
+                if sample_available():
+                    with right:
+                        st.button(
+                            "Try the sample gallery",
+                            key="home_sample",
+                            icon=":material/auto_awesome:",
+                            on_click=use_sample,
+                        )
 
 # -----------------------------
 # GALLERY PAGE
@@ -316,55 +359,124 @@ elif page == PAGES[1]:
     if flash:
         st.success(flash)
 
-    library = st.session_state.library
-    default_folder = st.session_state.get("last_folder") or (
-        library.folder if library else ""
-    )
+    def finish(index, stats):
+        st.session_state.library = index
+        st.session_state.results = None
+        st.session_state.flash = (
+            f"Indexed {len(index)} images "
+            f"({stats['new']} new, {stats['reused']} unchanged, "
+            f"{stats['skipped']} skipped)."
+        )
+        st.rerun()
 
-    folder_text = st.text_input(
-        "Gallery folder",
-        value=default_folder,
-        placeholder=r"C:\Users\you\Pictures",
-    )
+    def progress_bar():
+        bar = st.progress(0.0, text="Starting...")
 
-    if st.button(
-        "Build / update index",
-        icon=":material/bolt:",
-        use_container_width=True,
-    ):
-        folder = Path(folder_text.strip().strip('"'))
-        if not folder.is_dir():
-            st.error("That folder doesn't exist. Check the path and try again.")
-        else:
-            st.session_state.last_folder = str(folder)
+        def update(done, total, name):
+            bar.progress(done / total, text=f"Indexing {done}/{total}: {name}")
+
+        return update
+
+    if HOSTED:
+        upload_tab, folder_tab = st.container(), None
+    else:
+        upload_tab, folder_tab = st.tabs(
+            [":material/upload: Upload photos", ":material/folder_open: Local folder"]
+        )
+
+    with upload_tab:
+        files = st.file_uploader(
+            "Choose photos",
+            type=IMAGE_TYPES,
+            accept_multiple_files=True,
+            key="uploader",
+        )
+        st.caption(
+            f"Up to {MAX_UPLOADS} photos per session. Photos are processed in memory "
+            "for your session only and are not saved."
+        )
+        run_upload = st.button(
+            "Index photos",
+            key="index_uploads",
+            icon=":material/bolt:",
+            use_container_width=True,
+            disabled=not files,
+        )
+        run_sample = st.session_state.pop("run_sample", False)
+        if sample_available():
+            run_sample = st.button(
+                "Use the sample gallery",
+                key="gallery_sample",
+                icon=":material/auto_awesome:",
+            ) or run_sample
+
+        if run_upload and files:
+            if len(files) > MAX_UPLOADS:
+                st.error(f"Please upload at most {MAX_UPLOADS} photos at a time.")
+            else:
+                engine = get_engine()
+                try:
+                    index, stats = build_index_from_uploads(
+                        engine,
+                        [(f.name, f.getvalue()) for f in files],
+                        progress_bar(),
+                    )
+                except ValueError as err:
+                    st.error(str(err))
+                else:
+                    finish(index, stats)
+        elif run_sample:
             engine = get_engine()
-            bar = st.progress(0.0, text="Starting...")
-
-            def update(done, total, name):
-                bar.progress(done / total, text=f"Indexing {done}/{total}: {name}")
-
             try:
-                index, stats = build_index(engine, folder, update)
+                index, stats = build_index(
+                    engine, SAMPLE_DIR, progress_bar(), save=False, use_cache=False
+                )
             except ValueError as err:
                 st.error(str(err))
             else:
-                st.session_state.library = index
-                st.session_state.results = None
-                st.session_state.flash = (
-                    f"Indexed {len(index)} images "
-                    f"({stats['new']} new, {stats['reused']} unchanged, "
-                    f"{stats['skipped']} skipped)."
-                )
-                st.rerun()
+                finish(index, stats)
+
+    if folder_tab is not None:
+        with folder_tab:
+            library = st.session_state.library
+            default_folder = st.session_state.get("last_folder") or (
+                library.folder if library and library.thumbs is None else ""
+            )
+            folder_text = st.text_input(
+                "Gallery folder",
+                value=default_folder,
+                placeholder=r"C:\Users\you\Pictures",
+            )
+            if st.button(
+                "Build / update index",
+                key="build_folder",
+                icon=":material/bolt:",
+                use_container_width=True,
+            ):
+                folder = Path(folder_text.strip().strip('"'))
+                if not folder.is_dir():
+                    st.error("That folder doesn't exist. Check the path and try again.")
+                else:
+                    st.session_state.last_folder = str(folder)
+                    engine = get_engine()
+                    try:
+                        index, stats = build_index(engine, folder, progress_bar())
+                    except ValueError as err:
+                        st.error(str(err))
+                    else:
+                        finish(index, stats)
 
     library = st.session_state.library
 
     if library is None:
-        st.info("Select a gallery folder to get started.")
+        st.info("Add some photos to get started.")
     else:
-        st.caption(f"{len(library)} images indexed from {library.folder}")
+        st.caption(f"{len(library)} images indexed · {library.folder}")
         shown = st.slider("Images to show", 8, 60, 24, step=4)
-        render_grid([(p, Path(p).name) for p in library.paths[:shown]])
+        render_grid([
+            (library.source(i), library.name(i))
+            for i in range(min(shown, len(library)))
+        ])
 
 # -----------------------------
 # SETTINGS PAGE
@@ -376,4 +488,10 @@ elif page == PAGES[2]:
     st.write("Manage your Findora experience.")
 
     st.markdown("### :material/lock: Privacy")
-    st.write("Findora is designed to process your selected images locally.")
+    if HOSTED:
+        st.write(
+            "Photos you upload are processed in memory for your session only. "
+            "They are not saved to disk, and the index disappears when you close the tab."
+        )
+    else:
+        st.write("Running locally: your images are processed on this computer and never uploaded.")

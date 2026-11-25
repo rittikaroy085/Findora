@@ -183,3 +183,17 @@ hr { border-color: var(--stroke) !important; }
 ::-webkit-scrollbar { width: 10px; }
 ::-webkit-scrollbar-thumb { background: #2a2250; border-radius: 10px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+/* ---------- Keep the Search button inside the pill ---------- */
+[data-testid="stForm"] [data-testid="stVerticalBlock"] {
+  display: flex; flex-direction: row; align-items: center; flex-wrap: nowrap; gap: 0;
+}
+[data-testid="stForm"] [data-testid="stVerticalBlock"] > div:first-child { flex: 1 1 auto; min-width: 0; }
+[data-testid="stForm"] [data-testid="stVerticalBlock"] > div:last-child { flex: 0 0 auto; width: auto !important; }
+[data-testid="stForm"] [data-testid="stFormSubmitButton"] {
+  position: static; transform: none; right: auto; width: auto;
+}
+[data-testid="stForm"] [data-testid="stFormSubmitButton"] button { white-space: nowrap; width: max-content; }
+[data-testid="stForm"] .stTextInput input { padding-right: 16px !important; }
+.st-key-chips { max-width: 900px; }
+.hero-sub { max-width: 640px; }
