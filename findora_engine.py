@@ -88,30 +88,21 @@ class Findora:
         return (vector / np.linalg.norm(vector)).astype(np.float32)
 
     def embed_text(self, query: str) -> np.ndarray:
-        query = query.strip()
-        prompts = [query]
-        if len(query.split()) <= 4:
-            # CLIP understands caption-style text better than single words
-            prompts += [f"a photo of {query}", f"a picture of {query}"]
-            if len(query.split()) == 1:
-                prompts.append(f"a photo of a {query}")
         tokens = self.tokenizer(
-            prompts,
+            query,
             padding="max_length",
             max_length=77,
             truncation=True,
             return_tensors="np",
         )
-        vectors = self.text_model.run(
+        vector = self.text_model.run(
             ["text_embeds"],
             {
                 "input_ids": tokens["input_ids"],
                 "attention_mask": tokens["attention_mask"],
             },
-        )[0]
-        vectors = vectors / np.linalg.norm(vectors, axis=1, keepdims=True)
-        mean = vectors.mean(axis=0)
-        return (mean / np.linalg.norm(mean)).astype(np.float32)
+        )[0][0]
+        return (vector / np.linalg.norm(vector)).astype(np.float32)
 
     def search(
         self, query: str, vectors: np.ndarray, top_k: int = 12
