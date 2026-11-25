@@ -25,4 +25,11 @@ image_index.npz
 Thumbs.db
 
 # Model weights
+image_index.npz
 
+tempCodeRunnerFile.py
+venv/
+__pycache__/
+tempCodeRunnerFile.py
+image_index.npz
+*.onnx
