@@ -1,0 +1,107 @@
+
+/* =================================
+   FINDORA - AURORA DESIGN SYSTEM
+================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
+
+:root {
+    --bg: #0b0815;
+    --surface: #151020;
+    --surface-light: #1e1730;
+    --purple: #9b5cff;
+    --pink: #ec6cae;
+    --text: #f7f2ff;
+    --muted: #a69bb8;
+    --border: rgba(255,255,255,0.09);
+}
+
+/* Main application */
+
+.stApp {
+    background:
+        radial-gradient(ellipse at 15% 5%, rgba(132, 64, 220, 0.16), transparent 35%),
+        radial-gradient(ellipse at 85% 85%, rgba(225, 75, 166, 0.10), transparent 35%),
+        var(--bg);
+
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+}
+
+/* Hide Streamlit default elements */
+
+#MainMenu {
+    visibility: hidden;
+}
+
+footer {
+    visibility: hidden;
+}
+
+header[data-testid="stHeader"] {
+    background: transparent;
+}
+
+/* Typography */
+
+h1, h2, h3 {
+    font-family: 'Outfit', sans-serif !important;
+    color: var(--text) !important;
+}
+
+/* Sidebar */
+
+section[data-testid="stSidebar"] {
+    background: rgba(18, 13, 31, 0.96);
+    border-right: 1px solid var(--border);
+}
+
+section[data-testid="stSidebar"] * {
+    color: var(--text);
+}
+
+/* Buttons */
+
+.stButton > button {
+    background: linear-gradient(110deg, #914cff, #d45bd6);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 0.65rem 1.2rem;
+    font-weight: 600;
+    transition: 0.25s ease;
+}
+
+.stButton > button:hover {
+    border: none;
+    box-shadow: 0 0 22px rgba(155, 92, 255, 0.4);
+    transform: translateY(-2px);
+}
+
+/* Text inputs */
+
+.stTextInput input {
+    background: var(--surface);
+    color: white;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+
+.stTextInput input:focus {
+    border-color: var(--purple);
+    box-shadow: 0 0 12px rgba(155, 92, 255, 0.2);
+}
+
+/* Containers */
+
+div[data-testid="stVerticalBlockBorderWrapper"] {
+    background: rgba(30, 23, 48, 0.65);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+}
+
+/* Captions */
+
+.stCaption {
+    color: var(--muted);
+}
