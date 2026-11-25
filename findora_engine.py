@@ -87,7 +87,7 @@ class Findora:
         )[0][0]
         return (vector / np.linalg.norm(vector)).astype(np.float32)
 
-       def embed_text(self, query: str) -> np.ndarray:
+    def embed_text(self, query: str) -> np.ndarray:
         query = query.strip()
         prompts = [query]
         if len(query.split()) <= 4:
