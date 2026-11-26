@@ -87,14 +87,16 @@ class Findora:
         )[0][0]
         return (vector / np.linalg.norm(vector)).astype(np.float32)
 
+    
     def embed_text(self, query: str) -> np.ndarray:
         query = query.strip()
         prompts = [query]
+
         if len(query.split()) <= 4:
-            # CLIP understands caption-style text better than single words
             prompts += [f"a photo of {query}", f"a picture of {query}"]
             if len(query.split()) == 1:
                 prompts.append(f"a photo of a {query}")
+
         tokens = self.tokenizer(
             prompts,
             padding="max_length",
@@ -102,16 +104,42 @@ class Findora:
             truncation=True,
             return_tensors="np",
         )
+
+        # Match tokenizer outputs to the ONNX model's actual inputs
+        required_inputs = self.text_model.get_inputs()
+
+        model_inputs = {
+            item.name: tokens[item.name]
+            for item in required_inputs
+            if item.name in tokens
+        }
+
+        missing_inputs = [
+            item.name
+            for item in required_inputs
+            if item.name not in model_inputs
+        ]
+
+        if missing_inputs:
+            raise RuntimeError(
+                f"Missing ONNX model inputs: {missing_inputs}"
+            )
+
         vectors = self.text_model.run(
             ["text_embeds"],
-            {
-                "input_ids": tokens["input_ids"],
-                "attention_mask": tokens["attention_mask"],
-            },
+            model_inputs,
         )[0]
-        vectors = vectors / np.linalg.norm(vectors, axis=1, keepdims=True)
+
+        vectors = vectors / np.linalg.norm(
+            vectors, axis=1, keepdims=True
+        )
+
         mean = vectors.mean(axis=0)
-        return (mean / np.linalg.norm(mean)).astype(np.float32)
+
+        return (
+            mean / np.linalg.norm(mean)
+        ).astype(np.float32)
+
     
     def search(
         self, query: str, vectors: np.ndarray, top_k: int = 12
