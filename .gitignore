@@ -1,15 +1,20 @@
+# Environments
 venv/
 .venv/
+
+# Python
 __pycache__/
 *.pyc
 .env
 .streamlit/secrets.toml
+tempCodeRunnerFile.py
+.vscode/
 
-# Generated image index
+# Generated image index (contains paths to personal photos)
 image_index.npz
 *.npz
 
-# Large AI model weights
+# Large model weights (downloaded automatically on first start)
 *.onnx
 
 # Personal and test images
@@ -19,10 +24,14 @@ image_index.npz
 *.webp
 *.bmp
 
+# ...except the app's own logo, icons and the demo gallery
+!assets/*.png
+!sample_photos/*.jpg
+!sample_photos/*.jpeg
+!sample_photos/*.png
+!sample_photos/*.webp
+
 # Temporary files
 *.log
 .DS_Store
 Thumbs.db
-
-# Model weights
-

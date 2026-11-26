@@ -68,7 +68,9 @@ def get_engine():
 
 def sample_available() -> bool:
     return SAMPLE_DIR.is_dir() and any(
-        p.suffix.lower().lstrip(".") in IMAGE_TYPES for p in SAMPLE_DIR.iterdir()
+        p.suffix.lower().lstrip(".") in IMAGE_TYPES
+        for p in SAMPLE_DIR.rglob("*")
+        if p.is_file()
     )
 
 
