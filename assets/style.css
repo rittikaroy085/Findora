@@ -5,15 +5,28 @@
   --bg:#FBF6EC; --bg2:#F1E6CF; --text:#2A2140; --muted:#6E6486; --card:rgba(255,255,255,.72);
   --stroke:rgba(124,58,237,.18); --accent:#7C3AED; --accent2:#0EA5E9; --accent3:#F59E0B;
   --side:#F6EEDD; --glow:rgba(124,58,237,.35); --stars:none;
+
+  /* Search bar & search button customization */
+  --search-bg:#FFFFFF;
+  --search-text:#1E1633;
+  --search-placeholder:#7A7092;
+  --search-focus-ring:rgba(124,58,237,.22);
+  --search-btn-bg:linear-gradient(135deg, #0EA5E9 0%, #7C3AED 100%);
+  --search-btn-hover:linear-gradient(135deg, #0284C7 0%, #6D28D9 100%);
+
+  /* Background pattern layer */
+  --pattern:radial-gradient(color-mix(in srgb, var(--accent) 16%, transparent) 1.2px, transparent 1.2px);
 }
 
-/* ---------- Canvas: constellation stars + soft glow ---------- */
+/* ---------- Canvas: pattern + soft glow ---------- */
 .stApp {
   background:
     var(--stars),
+    var(--pattern),
     radial-gradient(900px 480px at 50% 12%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 65%),
     radial-gradient(600px 360px at 95% 0%, color-mix(in srgb, var(--accent2) 14%, transparent), transparent 60%),
     linear-gradient(180deg, var(--bg), var(--bg2));
+  background-size: auto, 24px 24px, auto, auto, auto;
   background-attachment: fixed;
   color: var(--text);
 }
@@ -41,7 +54,13 @@ footer { visibility: hidden; }
 .hero-sub { color:var(--muted); font-size:1.06rem; max-width:640px; margin:0 auto; }
 
 /* ---------- Sidebar ---------- */
-[data-testid="stSidebar"] { background:var(--side); border-right:1px solid var(--stroke); }
+[data-testid="stSidebar"] {
+  background:
+    radial-gradient(color-mix(in srgb, var(--accent2) 12%, transparent) 1px, transparent 1px),
+    var(--side);
+  background-size: 18px 18px, auto;
+  border-right:1px solid var(--stroke);
+}
 .brandrow { display:flex; align-items:center; gap:12px; margin:.4rem 0 1.6rem; }
 .brandrow img { width:46px; height:46px; border-radius:12px; box-shadow:0 0 18px var(--glow); }
 .brand { font-size:1.45rem; font-weight:800; letter-spacing:-0.03em; line-height:1.1;
@@ -82,23 +101,43 @@ footer { visibility: hidden; }
 .pill.off .dot { background:var(--muted); box-shadow:none; }
 
 /* ---------- Hero search pill (button stays inside) ---------- */
-[data-testid="stForm"] { position:relative; max-width:760px; margin:1.5rem auto 0; padding:6px !important;
-  border-radius:999px !important; border:1.5px solid var(--stroke) !important; background:var(--card);
-  backdrop-filter:blur(10px); box-shadow:0 10px 50px var(--glow); transition:border-color .2s, box-shadow .2s; }
-[data-testid="stForm"]:focus-within { border-color:var(--accent) !important;
-  box-shadow:0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent), 0 10px 60px var(--glow); }
+[data-testid="stForm"] {
+  position:relative; max-width:760px; margin:1.5rem auto 0; padding:6px !important;
+  border-radius:999px !important; border:1.5px solid var(--stroke) !important;
+  background:var(--search-bg) !important;
+  backdrop-filter:blur(10px); box-shadow:0 10px 50px var(--glow);
+  transition:border-color .2s, box-shadow .2s, background-color .2s;
+}
+[data-testid="stForm"]:focus-within {
+  border-color:var(--accent) !important;
+  box-shadow:0 0 0 4px var(--search-focus-ring), 0 10px 60px var(--glow);
+}
 [data-testid="stForm"] [data-testid="stVerticalBlock"] { display:flex; flex-direction:row; align-items:center; flex-wrap:nowrap; gap:0; }
 [data-testid="stForm"] [data-testid="stVerticalBlock"] > div:first-child { flex:1 1 auto; min-width:0; }
 [data-testid="stForm"] [data-testid="stVerticalBlock"] > div:last-child { flex:0 0 auto; width:auto !important; }
 [data-testid="stForm"] [data-baseweb="input"], [data-testid="stForm"] [data-baseweb="base-input"] {
-  background:transparent !important; border:none !important; box-shadow:none !important; }
-[data-testid="stForm"] .stTextInput input { height:52px; font-size:1.02rem; color:var(--text);
+  background:transparent !important; border:none !important; box-shadow:none !important;
+}
+[data-testid="stForm"] .stTextInput input {
+  height:52px; font-size:1.02rem; color:var(--search-text) !important;
   background-color:transparent !important; border:none !important; box-shadow:none !important;
   padding:0 16px 0 54px !important; background-repeat:no-repeat; background-position:20px center; background-size:20px;
-  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%237C3AED' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><circle cx='11' cy='11' r='8'/><path d='m21 21-4.3-4.3'/></svg>"); }
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%237C3AED' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><circle cx='11' cy='11' r='8'/><path d='m21 21-4.3-4.3'/></svg>");
+}
+[data-testid="stForm"] .stTextInput input::placeholder {
+  color:var(--search-placeholder) !important; opacity:1;
+}
 [data-testid="InputInstructions"] { display:none; }
 [data-testid="stForm"] [data-testid="stFormSubmitButton"] { position:static; width:auto; }
-[data-testid="stForm"] [data-testid="stFormSubmitButton"] button { height:44px; padding:0 22px; border-radius:999px; white-space:nowrap; width:max-content; }
+[data-testid="stForm"] [data-testid="stFormSubmitButton"] button {
+  height:44px; padding:0 22px; border-radius:999px !important; white-space:nowrap; width:max-content;
+  background:var(--search-btn-bg) !important; color:#FFFFFF !important;
+  border:none !important; box-shadow:0 6px 18px color-mix(in srgb, var(--accent2) 35%, transparent);
+}
+[data-testid="stForm"] [data-testid="stFormSubmitButton"] button:hover {
+  background:var(--search-btn-hover) !important; color:#FFFFFF !important;
+  box-shadow:0 10px 24px color-mix(in srgb, var(--accent) 45%, transparent);
+}
 
 /* ---------- Suggestion chips: each with its own border colour ---------- */
 .st-key-chips { max-width:900px; margin:.9rem auto 0; gap:.5rem; }
